@@ -18,8 +18,8 @@ This API provides endpoints for uploading files with speed control, pausing, res
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/file-upload-api.git
-   cd file-upload-api
+   git clone https://github.com/ptt3199/fastapi-uploadfile-backgroundtask.git
+   cd fastapi-uploadfile-backgroundtask
    ```
 
 2. Create a virtual environment:
