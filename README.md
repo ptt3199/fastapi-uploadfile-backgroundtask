@@ -155,6 +155,36 @@ After starting the server, you can interact with the API using HTTP requests. Th
   }
   ```
 
+### 7. List All Files
+
+- **URL:** `/api/files`
+- **Method:** `GET`
+- **Response:**
+  ```json
+  {
+    "files": [
+      {
+        "upload_id": "string",
+        "filename": "string",
+        "status": "string"
+      }
+    ]
+  }
+  ```
+
+### 8. Delete a File
+
+- **URL:** `/api/files/{upload_id}`
+- **Method:** `DELETE`
+- **Response:**
+  ```json
+  {
+    "status": "deleted",
+    "upload_id": "string",
+    "filename": "string"
+  }
+  ```
+
 ## Examples
 
 ### Starting an Upload
@@ -187,6 +217,19 @@ curl "http://localhost:8000/api/upload/{upload_id}/status" -H "accept: applicati
 curl -X GET "http://localhost:8000/api/uploads" -H "accept: application/json"
 ```
 Replace `{upload_id}` with the actual upload ID returned when starting the upload.
+
+### Listing All Files
+
+```bash
+curl -X GET "http://localhost:8000/api/files" -H "accept: application/json"
+```
+
+### Deleting a File
+
+```bash
+curl -X DELETE "http://localhost:8000/api/files/{upload_id}" -H "accept: application/json"
+```
+Replace `{upload_id}` with the actual upload ID.
 
 ## Troubleshooting
 

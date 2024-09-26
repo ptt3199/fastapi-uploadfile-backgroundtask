@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, HTTPException, BackgroundTasks, Query
+from fastapi import APIRouter, UploadFile, HTTPException, BackgroundTasks, Query, File
 from fastapi.responses import JSONResponse
 from uuid import uuid4
 import asyncio
@@ -8,6 +8,7 @@ import io
 import time
 import logging
 from app.core.config import settings
+import json
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -15,6 +16,23 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 upload_tasks = {}
+
+# Add this function to update the JSON file
+def update_uploads_json(upload_id, filename, status):
+    json_file = path.join(settings.UPLOAD_DIR, 'uploads.json')
+    if path.exists(json_file):
+        with open(json_file, 'r') as f:
+            uploads = json.load(f)
+    else:
+        uploads = {}
+    
+    uploads[upload_id] = {
+        'filename': filename,
+        'status': status
+    }
+    
+    with open(json_file, 'w') as f:
+        json.dump(uploads, f)
 
 async def process_upload(file_content: bytes, filename: str, upload_id: str):
     total_size = len(file_content)
@@ -66,11 +84,13 @@ async def process_upload(file_content: bytes, filename: str, upload_id: str):
                     await asyncio.sleep(expected_time - elapsed_time)
 
         upload_tasks[upload_id]["status"] = "completed"
+        update_uploads_json(upload_id, filename, "completed")
         logger.info(f"Upload {upload_id} completed")
     except Exception as e:
         logger.error(f"Error during upload {upload_id}: {str(e)}")
         upload_tasks[upload_id]["status"] = "failed"
         upload_tasks[upload_id]["error"] = str(e)
+        update_uploads_json(upload_id, filename, "failed")
 
 @router.post("/upload")
 async def upload_file(
@@ -90,7 +110,7 @@ async def upload_file(
         "current_speed": 0
     }
     
-    asyncio.create_task(process_upload(file_content, file.filename, upload_id))
+    background_tasks.add_task(process_upload, file_content, file.filename, upload_id)
     
     logger.info(f"Started upload {upload_id}: {file.filename}, Size: {total_size} bytes, Speed: {speed} B/s")
     return JSONResponse({
@@ -170,3 +190,48 @@ async def list_uploads():
     ]
     logger.info(f"List uploads request: {len(uploads_list)} uploads")
     return JSONResponse({"uploads": uploads_list})
+
+@router.get("/files")
+async def list_files():
+    json_file = path.join(settings.UPLOAD_DIR, 'uploads.json')
+    if not path.exists(json_file):
+        return JSONResponse({"files": []})
+    
+    with open(json_file, 'r') as f:
+        uploads = json.load(f)
+    
+    files = [
+        {
+            "upload_id": upload_id,
+            "filename": info['filename'],
+            "status": info['status']
+        }
+        for upload_id, info in uploads.items()
+    ]
+    
+    return JSONResponse({"files": files})
+
+@router.delete("/files/{upload_id}")
+async def delete_file(upload_id: str):
+    json_file = path.join(settings.UPLOAD_DIR, 'uploads.json')
+    if not path.exists(json_file):
+        raise HTTPException(status_code=404, detail="No uploads found")
+    
+    with open(json_file, 'r') as f:
+        uploads = json.load(f)
+    
+    if upload_id not in uploads:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    filename = uploads[upload_id]['filename']
+    file_path = path.join(settings.UPLOAD_DIR, f"{upload_id}_{filename}")
+    
+    if path.exists(file_path):
+        os.remove(file_path)
+    
+    del uploads[upload_id]
+    
+    with open(json_file, 'w') as f:
+        json.dump(uploads, f)
+    
+    return JSONResponse({"status": "deleted", "upload_id": upload_id, "filename": filename})
