@@ -63,6 +63,8 @@ You can set these in a `.env` file in the project root or export them in your sh
 
 After starting the server, you can interact with the API using HTTP requests. The API supports file uploads with speed control, as well as pausing, resuming, and canceling uploads.
 
+Here I use a json file to store the upload status, and the file content is stored in the `uploads` directory for simplicity.
+
 ## API Endpoints
 
 ### 1. Start Upload
